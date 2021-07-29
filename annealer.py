@@ -22,6 +22,11 @@ class QuantumAnnealer(ABC):
 
 class QutipAnnealer(QuantumAnnealer):
     def __init__(self, scheduler, qubo_problem, num_qubits):
+        """ This class is responsible for taking in a QUBO problem and converting it into
+            a target Hamiltonian that can easily be used for qutip, as well as setting up initial states etc.
+
+            Still leaves the actual anneal method as abstract.
+        """
         super().__init__(scheduler, qubo_problem, num_qubits)
         self.initial_state = self._Sx_eigenstate()
         self.initial_hamil = self._inital_hamil()
@@ -64,7 +69,8 @@ class QutipAnnealer(QuantumAnnealer):
     
 
 class QutipStateVectorAnnealer(QutipAnnealer):
-    """ Statevector Quantum annealing algorithm using the QUTIP library using state-vector simulation 
+    """ Statevector Quantum annealing algorithm using the QUTIP library using state-vector simulation.
+        
     """
 
     def __init__(self, scheduler: Scheduler, qubo_problem, num_qubits):
@@ -81,7 +87,7 @@ class QutipStateVectorAnnealer(QutipAnnealer):
         return res
 
 class QutipDensityMatrixAnnealer(QutipAnnealer):
-    """ Statevector Quantum annealing algorithm using the QUTIP library using state-vector simulation 
+    """ Statevector Quantum annealing algorithm using the QUTIP library using density matrix simulation 
     """
 
     def __init__(self, scheduler: Scheduler, qubo_problem, num_qubits):
