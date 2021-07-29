@@ -4,7 +4,7 @@ import scipy
 import scipy.stats as scs
 import networkx as nx
 import random
-from functools import combinations, groupby
+from itertools import combinations, groupby
 
 
 def gnp_random_connected_graph(n, p, seed):
