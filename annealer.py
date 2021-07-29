@@ -63,7 +63,7 @@ class QutipAnnealer(QuantumAnnealer):
         pass
     
 
-class QutipSchrodingerAnnealer(QutipAnnealer):
+class QutipStateVectorAnnealer(QutipAnnealer):
     """ Statevector Quantum annealing algorithm using the QUTIP library using state-vector simulation 
     """
 
@@ -77,6 +77,24 @@ class QutipSchrodingerAnnealer(QutipAnnealer):
         Hlist = [[self.initial_hamil, self.scheduler.initial_hamil_timing_str()], [self.target_hamil, self.scheduler.target_hamil_timing_str()]]
 
         res = sesolve(Hlist, self.initial_state, times, args=args, e_ops = [self.target_hamil])
+
+        return res
+
+class QutipDensityMatrixAnnealer(QutipAnnealer):
+    """ Statevector Quantum annealing algorithm using the QUTIP library using state-vector simulation 
+    """
+
+    def __init__(self, scheduler: Scheduler, qubo_problem, num_qubits):
+        super().__init__(scheduler, qubo_problem, num_qubits)
+        self.initial_state = self.initial_state * self.initial_state.dag()
+        
+    def anneal(self):
+        args = self.scheduler.args()
+        times = self.scheduler.create_times()
+
+        Hlist = [[self.initial_hamil, self.scheduler.initial_hamil_timing_str()], [self.target_hamil, self.scheduler.target_hamil_timing_str()]]
+
+        res = mesolve(Hlist, self.initial_state, times, args=args, e_ops = [self.target_hamil])
 
         return res
 
