@@ -60,7 +60,7 @@ class MaxCutNXProblem(Problem):
         laplacian_spectrum = nx.laplacian_spectrum(self.g) # do not include
         laplacian_energy = np.sum(np.abs(laplacian_spectrum-2*num_edges/num_nodes))
         laplacian_matrix = nx.normalized_laplacian_matrix(self.g) # do not include
-        norm_laplac_eigvals, _ = scipy.sparse.linalg.eigs(laplacian_matrix) # do not include
+        norm_laplac_eigvals, _ = scipy.linalg.eig(laplacian_matrix.toarray()) # do not include
         non_zero_eigvals = np.sort(norm_laplac_eigvals[norm_laplac_eigvals != 0]) # do not include
         logratlarge = np.log(non_zero_eigvals[-1]/non_zero_eigvals[-2])
         logratnonzero = np.log(non_zero_eigvals[-1]/non_zero_eigvals[0])

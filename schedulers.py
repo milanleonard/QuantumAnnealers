@@ -36,6 +36,12 @@ class LinearScheduler(Scheduler):
     def __init__(self, total_time : float, num_timesteps):
         super().__init__(total_time, num_timesteps)
 
+    def initial_t(self, t):
+        return 1 - 1 / self.total_time * t
+
+    def target_t(self, t):
+        return t / self.total_time 
+
     def __str__():
         return '1/total_time * t + (1-1/total_time) * t'
 
