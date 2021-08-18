@@ -134,3 +134,4 @@ dmypy.json
 # The work I do in folder 
 *.ipynb
 qobj*
+work*.ipynb
