@@ -1,8 +1,29 @@
 from abc import ABC, abstractmethod
-from schedulers import Scheduler, LinearScheduler
+from schedulers import ClassicalScheduler, QuantumScheduler, QuboClassicalScheduler
 import qutip
 import numpy as np
 import scipy
+import numba
+from typing import Union, Literal
+
+def _construct_qubo_energy_function(problem: list):
+   # @numba.njit
+    def qubo_energy_function(bitstring: list[Union[Literal[0],Literal[1]]]):
+        val = 0
+        for l, r, weight in problem:
+            val -= weight * bitstring[l] * bitstring[r]
+        return val
+    return qubo_energy_function
+
+def _construct_ising_energy_function(problem: list):
+  #  @numba.njit
+    def ising_energy_function(bitstring: list[Union[Literal[0],Literal[1]]]):
+        val = 0
+        for l, r, weight in problem:
+            val -= weight * (2*bitstring[l]-1) * (2*bitstring[r]-1)
+        return val
+    return ising_energy_function
+
 
 
 class QuantumAnnealer(ABC):
@@ -10,7 +31,7 @@ class QuantumAnnealer(ABC):
     
     params: scheduler"""
 
-    def __init__(self, scheduler: Scheduler, qubo_problem: dict, num_qubits: int):
+    def __init__(self, scheduler: QuantumScheduler, qubo_problem: dict, num_qubits: int):
         self.scheduler = scheduler
         self.qubo_problem = qubo_problem
         self.num_qubits = num_qubits
@@ -77,7 +98,7 @@ class QutipStateVectorAnnealer(QutipAnnealer):
     """ Statevector Quantum annealing algorithm using the QUTIP library using state-vector simulation.
     """
 
-    def __init__(self, scheduler: Scheduler, qubo_problem, num_qubits):
+    def __init__(self, scheduler: QuantumScheduler, qubo_problem, num_qubits):
         super().__init__(scheduler, qubo_problem, num_qubits)
         self.res = None
         
@@ -93,6 +114,9 @@ class QutipStateVectorAnnealer(QutipAnnealer):
     def _expect(self):
         return np.array([(state.dag()*self.target_hamil*state).get_data().toarray() for state in self.res.states]).flatten()
 
+    def get_optimal(self):
+        return self.optimal_result()
+
     
 
 
@@ -100,7 +124,7 @@ class QutipDensityMatrixAnnealer(QutipAnnealer):
     """ Statevector Quantum annealing algorithm using the QUTIP library using density matrix simulation 
     """
 
-    def __init__(self, scheduler: Scheduler, qubo_problem, num_qubits):
+    def __init__(self, scheduler: QuantumScheduler, qubo_problem, num_qubits):
         super().__init__(scheduler, qubo_problem, num_qubits)
         self.initial_state = self.initial_state * self.initial_state.dag()
         
@@ -109,13 +133,74 @@ class QutipDensityMatrixAnnealer(QutipAnnealer):
         times = self.scheduler.create_times()
 
         Hlist = [[self.initial_hamil, self.scheduler.initial_hamil_timing_str()], [self.target_hamil, self.scheduler.target_hamil_timing_str()]]
+        dephasers = []
+        for i in range(self.num_qubits):
+            ident = [qutip.qeye(2)] * self.num_qubits
+            ident[i] = 0.2 * qutip.sigmaz()
+            dephasers.append(qutip.tensor(ident))
 
-        res = qutip.mesolve(Hlist, self.initial_state, times, args=args, e_ops = [self.target_hamil])
+        self.res = qutip.mesolve(Hlist, self.initial_state, times, dephasers, args=args, e_ops = [self.target_hamil])
 
-        return res
+    def get_optimal(self):
+        return self.optimal_result()
+    
+    def get_expectation_val(self):
+        return self.res.expect[0][-1]
 
 
 
+class CombinatorialAnnealer(ABC):
+    """ Abstract class for Quantum Annealing algorithms
+    
+    params: scheduler"""
+
+    def __init__(self, scheduler: ClassicalScheduler, num_nodes: int):
+        self.scheduler = scheduler
+        self.num_nodes = num_nodes
+
+    @abstractmethod
+    def anneal(self):
+        pass
+
+
+class MetropolisAnnealer(CombinatorialAnnealer):
+    def __init__(self, scheduler: QuboClassicalScheduler, qubo_problem, num_nodes, isIsing=True):
+        super().__init__(scheduler=scheduler, num_nodes=num_nodes)
+        self.problem = [(l,r, value) for (l,r), value in qubo_problem.items()]
+        self.state = np.random.randint(2, size=self.num_nodes, dtype = np.uint8)
+        if isIsing:
+            self.energy_function = _construct_ising_energy_function(self.problem)
+        else:
+            self.energy_function = _construct_qubo_energy_function(self.problem)
+        self.curr_energy = self.energy_function(self.state)
+    
+    def anneal(self, verbose=False):
+        while self.scheduler.step():
+            if verbose:
+                print(self.curr_energy)
+            flip_bits = self.scheduler.flip_which_bits(self.num_nodes)
+            proposal_state = self.state.copy()
+            proposal_state[flip_bits] = 1^self.state[flip_bits]
+            if ((new_energy := self.energy_function(proposal_state)) < self.curr_energy):
+                self.state = proposal_state
+                self.curr_energy = new_energy
+            else:
+                temp = self.scheduler.temp
+                energy_diff = self.curr_energy - new_energy
+                rand = np.random.uniform(0,1)
+                rand_compare = np.exp(energy_diff/temp)
+                if rand < rand_compare:
+                    self.state = proposal_state
+                    self.curr_energy = new_energy
+        print(f"final energy of {self.curr_energy}")
+
+
+
+
+
+
+
+        
 
 
 
