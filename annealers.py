@@ -69,7 +69,7 @@ class QutipAnnealer(QuantumAnnealer):
         assert len(ops) == len(poses), "Must specify a position for each operator, and vice versa"
         tens_list = [qutip.identity(2)] * self.num_qubits
         for op, pos in zip(ops, poses):
-            tens_list[pos] = op
+            tens_list[pos-1] = op
         return qutip.tensor(tens_list)
 
     def _qubo_to_target_hamil(self):
