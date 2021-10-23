@@ -8,6 +8,7 @@ from functools import partial
 
 # %%
 def perform_dm_anneal(num_qubits : int, anneal_time : float, quboproblem : dict):
+    print("j")
     annealer = QutipDensityMatrixAnnealer(LinearScheduler(total_time=anneal_time,num_timesteps=1000), quboproblem, num_qubits)
     annealer.anneal()
     ratio = annealer.get_expectation_val() / annealer.get_optimal()
@@ -20,7 +21,7 @@ PROBLEM_QUBOS = [problem.generate_qubo() for problem in PROBLEMS]
 # %%
 anneal_times = np.linspace(0.2,5,20)
 ratios = np.zeros(len(anneal_times))
-with multiprocessing.Pool(3) as pool:
+with multiprocessing.Pool(31) as pool:
     for idx, anneal_time in enumerate(anneal_times):
         this_partial = partial(perform_dm_anneal, NUM_QUBITS, anneal_time)
         rats = pool.map(this_partial, PROBLEM_QUBOS)
@@ -28,3 +29,5 @@ with multiprocessing.Pool(3) as pool:
 # %%
 test = np.vstack((anneal_times, ratios))
 # %%
+with open('./timesdata.npy', 'wb') as f:
+    np.save(f, test)
